@@ -1,4 +1,4 @@
-const C="casa-noah-v4",F=["./","index.html","manifest.webmanifest","icon-192.png","icon-512.png"],FONT="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Andika:wght@400;700&display=swap";
+const C="casa-noah-v5",F=["./","index.html","manifest.webmanifest","icon-192.png","icon-512.png"],FONT="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Andika:wght@400;700&display=swap";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F).then(()=>fetch(FONT,{mode:"cors"}).then(r=>c.put(FONT,r)).catch(()=>{}))));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;const u=new URL(e.request.url);

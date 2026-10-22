@@ -480,7 +480,7 @@ function say1(t,lang,rate,done){
     const s=speechSynthesis;
     if(!frVoice||!esVoice)pickVoice();
     const es=lang.startsWith('es'),u=new SpeechSynthesisUtterance(t);u.lang=lang;u.rate=rate||(es?.82:.9);u.pitch=1;u.volume=1;
-    const v=es?esVoice:frVoice;if(v&&!IOS)u.voice=v;else if(v&&IOS&&v.localService!==false)u.voice=v;
+    const v=es?esVoice:frVoice;if(v&&!IOS)u.voice=v;
     UTT.push(u);if(UTT.length>20)UTT.shift();
     let started=false;
     u.onstart=()=>{started=true;voiceOK=true;hideVB();hideSoundGate()};
@@ -2153,7 +2153,16 @@ function settings(){
   {const vs=hasTTS()?speechSynthesis.getVoices():[];pickVoice();const dg=$('#vdiag');if(dg)dg.textContent=`Voix : ${hasTTS()?'disponible':'non disponible sur cet appareil'} · ${vs.length} voix · français : ${frVoice?frVoice.name:'aucune'} · espagnol : ${esVoice?esVoice.name:'aucune'}`}
   (async()=>{const o=$('#offl');if(!o)return;try{const k=await caches.keys();let ok=false;for(const n of k){const c=await caches.open(n);if(await c.match('index.html')||await c.match('./')){ok=true;break}}o.textContent=ok?'✓ Le jeu est enregistré sur ce téléphone : il marche sans connexion.':'Le jeu n’est pas encore enregistré pour le hors connexion. Garde la page ouverte quelques secondes avec Internet, puis recharge-la.'}catch(e){o.textContent='Mode hors connexion indisponible dans ce navigateur.'}})();
   {const ib=$('#inst');if(ib&&window.__inst){ib.hidden=false;ib.onclick=async()=>{const p=window.__inst;window.__inst=null;ib.hidden=true;try{p.prompt();await p.userChoice}catch(e){}}}}
-  $('#tv').onclick=()=>{vbDismissed=false;speak(`Bonjour ${S.name} ! Je suis la voix de Casa de Noah.`)};
+  $('#tv').onclick=()=>{vbDismissed=false;const dg=$('#vdiag');
+    if(!hasTTS()){dg.textContent='✗ Ce navigateur ne propose pas de voix.';return}
+    const st=window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone?'icône écran d’accueil':'navigateur';
+    const vs=speechSynthesis.getVoices();try{speechSynthesis.cancel()}catch(e){}
+    const u=new SpeechSynthesisUtterance(`Bonjour ${S.name} ! Je suis la voix de Casa de Noah.`);u.lang='fr-FR';u.volume=1;UTT.push(u);
+    let ok=false;dg.textContent=`Test en cours… (${st}, ${vs.length} voix)`;
+    u.onstart=()=>{ok=true;voiceOK=true;hideVB();hideSoundGate();dg.textContent=`✓ La voix a démarré (${st}, ${vs.length} voix). Si tu n’entends rien, c’est le son du téléphone : mode silencieux ou volume.`};
+    u.onerror=e=>{dg.textContent=`✗ Erreur de voix : ${e&&e.error||'inconnue'} (${st}, ${vs.length} voix).`};
+    speechSynthesis.speak(u);
+    setTimeout(()=>{if(!ok&&!/Erreur/.test(dg.textContent))dg.textContent=`✗ La voix n’a pas démarré (${st}, ${vs.length} voix, français : ${frVoice?frVoice.name:'aucune'}).`},4000)};
   $('#cl').onclick=()=>{closeModal();if(!cur)showHome()};
   modal.querySelectorAll('.ureset').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
     if(!b.dataset.ok){b.dataset.ok='1';b.textContent='Confirmer ?';b.classList.add('conf');setTimeout(()=>{if(b.isConnected&&b.dataset.ok){delete b.dataset.ok;b.textContent='↺ Remettre à zéro';b.classList.remove('conf')}},4000);return}
