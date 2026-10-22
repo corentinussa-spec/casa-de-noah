@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr"><head>
-<title>Les Bestioles Savantes</title>
+<title>Casa de Noah</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#FFF8EC"><meta name="description" content="Jeu éducatif pour enfants de 5 ans : 8 univers, pièces à gagner et 151 cartes d’animaux à collectionner.">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2136,7 +2136,7 @@ function settings(){
   modal.hidden=false;
   $('#nm').oninput=e=>{S.name=e.target.value.trim()||'Noah';save();updateHead()};
   modal.querySelectorAll('.avas button').forEach(b=>b.onclick=()=>{S.avatar=b.dataset.a;save();updateHead();modal.querySelectorAll('.avas button').forEach(x=>x.classList.toggle('on',x===b))});
-  $('#tv').onclick=()=>{vbDismissed=false;speak(`Bonjour ${S.name} ! Je suis la voix des Bestioles Savantes.`)};
+  $('#tv').onclick=()=>{vbDismissed=false;speak(`Bonjour ${S.name} ! Je suis la voix de Casa de Noah.`)};
   $('#cl').onclick=()=>{closeModal();if(!cur)showHome()};
   modal.querySelectorAll('.ureset').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
     if(!b.dataset.ok){b.dataset.ok='1';b.textContent='Confirmer ?';b.classList.add('conf');setTimeout(()=>{if(b.isConnected&&b.dataset.ok){delete b.dataset.ok;b.textContent='↺ Remettre à zéro';b.classList.remove('conf')}},4000);return}
