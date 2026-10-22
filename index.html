@@ -422,6 +422,8 @@ svg .over{stroke:var(--gold-dk)!important;stroke-width:6!important;outline:none}
 .play-hit{position:absolute;left:68.75%;top:83.5%;width:13%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:transparent;animation:ring 2s ease-out infinite}
 @keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,255,255,.75)}100%{box-shadow:0 0 0 14px rgba(255,255,255,0)}}
 .play-hit:active{transform:translate(-50%,-50%) scale(.92)}
+.sgate{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:46;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--gold);color:var(--ink);border:4px solid #fff;border-radius:22px;padding:12px 20px;box-shadow:0 8px 20px rgba(0,0,0,.25);width:min(90vw,340px)}
+.sgate span{font-size:34px}.sgate b{font-family:var(--f-display);font-size:19px}.sgate small{font-size:12px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head><body>
@@ -468,21 +470,26 @@ const hasTTS=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.Spee
 function pickVoice(){try{const vs=speechSynthesis.getVoices();frVoice=vs.find(v=>/^fr[-_]FR/i.test(v.lang))||vs.find(v=>/^fr/i.test(v.lang))||null;esVoice=vs.find(v=>/^es[-_]ES/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null}catch(e){}}
 if(hasTTS()){pickVoice();try{speechSynthesis.addEventListener('voiceschanged',pickVoice)}catch(e){try{speechSynthesis.onvoiceschanged=pickVoice}catch(_){}}}
 let spkTok=0,esVoice=null;
+const UTT=[];let unlockU=null;
 function say1(t,lang,rate,done){
   let fired=false;const fin=()=>{if(fired)return;fired=true;done()};
   const est=Math.max(1400,String(t).length*80);
   if(!t){setTimeout(fin,50);return}
   if(!hasTTS()){voiceFail();setTimeout(fin,Math.min(est,2500));return}
   try{
-    const s=speechSynthesis,busy=s.speaking||s.pending;if(busy)s.cancel();
+    const s=speechSynthesis;
     if(!frVoice||!esVoice)pickVoice();
-    const es=lang.startsWith('es'),u=new SpeechSynthesisUtterance(t);u.lang=lang;u.rate=rate||(es?.82:.9);u.pitch=1;const v=es?esVoice:frVoice;if(v)u.voice=v;
+    const es=lang.startsWith('es'),u=new SpeechSynthesisUtterance(t);u.lang=lang;u.rate=rate||(es?.82:.9);u.pitch=1;u.volume=1;
+    const v=es?esVoice:frVoice;if(v&&!IOS)u.voice=v;else if(v&&IOS&&v.localService!==false)u.voice=v;
+    UTT.push(u);if(UTT.length>20)UTT.shift();
     let started=false;
-    u.onstart=()=>{started=true;voiceOK=true;hideVB()};
+    u.onstart=()=>{started=true;voiceOK=true;hideVB();hideSoundGate()};
     u.onend=fin;
     u.onerror=e=>{if(!(e&&(e.error==='interrupted'||e.error==='canceled')))voiceFail();fin()};
-    const go=()=>{try{s.resume();s.speak(u)}catch(e){voiceFail();fin()}};if(busy&&!IOS)setTimeout(go,90);else go();
-    setTimeout(()=>{if(!started){if(voiceOK!==true)voiceFail();setTimeout(fin,600)}},3200);
+    const go=()=>{try{s.speak(u);if(s.paused)s.resume()}catch(e){voiceFail();fin()}};
+    const busy=(s.speaking||s.pending)&&!unlockU;
+    if(busy){s.cancel();setTimeout(go,IOS?250:90)}else go();
+    setTimeout(()=>{if(!started){if(voiceOK!==true)voiceFail();setTimeout(fin,600)}},IOS?4500:3200);
     setTimeout(fin,est/(u.rate||1)+6000);
   }catch(e){voiceFail();setTimeout(fin,1500)}
 }
@@ -494,8 +501,10 @@ function speak(t,done,lang){
 }
 const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let ttsUnlocked=false;
-function unlockTTS(){if(ttsUnlocked||!hasTTS())return;ttsUnlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='fr-FR';speechSynthesis.speak(u);speechSynthesis.resume()}catch(e){}pickVoice()}
-['touchend','pointerup','click'].forEach(ev=>document.addEventListener(ev,unlockTTS,{capture:true,passive:true}));
+function unlockTTS(){if(ttsUnlocked||!hasTTS())return;ttsUnlocked=true;try{const u=new SpeechSynthesisUtterance('.');u.volume=0;u.rate=2;u.lang='fr-FR';unlockU=u;u.onend=u.onerror=()=>{unlockU=null};setTimeout(()=>{unlockU=null},1500);UTT.push(u);speechSynthesis.speak(u)}catch(e){}pickVoice()}
+function hideSoundGate(){const g=document.getElementById('sgate');if(g)g.remove()}
+function soundGate(){if(!IOS||voiceOK===true||document.getElementById('sgate'))return;const g=document.createElement('button');g.id='sgate';g.className='sgate';g.innerHTML='<span>🔊</span><b>Touche ici pour activer la voix</b><small>Vérifie aussi que l’iPhone n’est pas en mode silencieux</small>';g.onclick=()=>{ttsUnlocked=true;speak(`Bonjour ${S.name} ! La voix est activée.`);setTimeout(hideSoundGate,400)};document.body.appendChild(g)}
+['touchend','click'].forEach(ev=>document.addEventListener(ev,unlockTTS,{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&hasTTS()){try{speechSynthesis.cancel();speechSynthesis.resume()}catch(e){}}});
 function voiceFail(){voiceOK=false;if(vbDismissed||document.getElementById('vb'))return;const b=document.createElement('div');b.id='vb';b.className='vbanner';b.innerHTML=IOS?'<p><b>Pas de son ?</b> Désactive le mode silencieux (bouton sur le côté de l’iPhone), monte le volume, puis touche 🔊.</p><button id="vbok">OK</button>':'<p><b>Pas de voix ici.</b> Ouvre le jeu dans Chrome et monte le volume.</p><button id="vbok">OK</button>';document.body.appendChild(b);document.getElementById('vbok').onclick=()=>{vbDismissed=true;hideVB()}}
 function hideVB(){const b=document.getElementById('vb');if(b)b.remove()}
@@ -2137,10 +2146,11 @@ function settings(){
   <span class="lab">Niveaux par univers</span>
   <div class="ulist">${Object.entries(UNIV).map(([k,u])=>`<div class="urow ${u.cls}"><span class="udot">${u.ic}</span><span class="un">${u.t}<small>Niveau ${S.lv[k]} · ${(S.lvp&&S.lvp[k])||0}/${NEED}</small></span><button class="ureset" data-k="${k}">↺ Remettre à zéro</button></div>`).join('')}</div>
   <p>Remettre un univers à zéro le ramène au niveau 1. Les pièces et les cartes du carnet sont gardées. Un niveau monte après 8 bonnes réponses du premier coup et redescend après 3 erreurs de suite. La progression est gardée dans ce navigateur, sur cet appareil.</p>
-  <button class="mbtn gold" id="tv">Tester la voix</button><button class="mbtn red" id="rz">Tout effacer (cartes et pièces comprises)</button><button class="mbtn" id="cl">Fermer</button></div>`;
+  <p id="vdiag"></p><button class="mbtn gold" id="tv">Tester la voix</button><button class="mbtn red" id="rz">Tout effacer (cartes et pièces comprises)</button><button class="mbtn" id="cl">Fermer</button></div>`;
   modal.hidden=false;
   $('#nm').oninput=e=>{S.name=e.target.value.trim()||'Noah';save();updateHead()};
   modal.querySelectorAll('.avas button').forEach(b=>b.onclick=()=>{S.avatar=b.dataset.a;save();updateHead();modal.querySelectorAll('.avas button').forEach(x=>x.classList.toggle('on',x===b))});
+  {const vs=hasTTS()?speechSynthesis.getVoices():[];pickVoice();const dg=$('#vdiag');if(dg)dg.textContent=`Voix : ${hasTTS()?'disponible':'non disponible sur cet appareil'} · ${vs.length} voix · français : ${frVoice?frVoice.name:'aucune'} · espagnol : ${esVoice?esVoice.name:'aucune'}`}
   $('#tv').onclick=()=>{vbDismissed=false;speak(`Bonjour ${S.name} ! Je suis la voix de Casa de Noah.`)};
   $('#cl').onclick=()=>{closeModal();if(!cur)showHome()};
   modal.querySelectorAll('.ureset').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
@@ -2154,6 +2164,7 @@ modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
 
 $('#chest').onclick=showShop;$('#gear').onclick=settings;$('#profile').onclick=showAlbum;
 updateHead();showHome();
+setTimeout(soundGate,300);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 </script>
