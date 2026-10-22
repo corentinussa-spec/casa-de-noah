@@ -474,14 +474,14 @@ function say1(t,lang,rate,done){
   if(!t){setTimeout(fin,50);return}
   if(!hasTTS()){voiceFail();setTimeout(fin,Math.min(est,2500));return}
   try{
-    const s=speechSynthesis;if(s.speaking||s.pending)s.cancel();
+    const s=speechSynthesis,busy=s.speaking||s.pending;if(busy)s.cancel();
     if(!frVoice||!esVoice)pickVoice();
     const es=lang.startsWith('es'),u=new SpeechSynthesisUtterance(t);u.lang=lang;u.rate=rate||(es?.82:.9);u.pitch=1;const v=es?esVoice:frVoice;if(v)u.voice=v;
     let started=false;
     u.onstart=()=>{started=true;voiceOK=true;hideVB()};
     u.onend=fin;
     u.onerror=e=>{if(!(e&&(e.error==='interrupted'||e.error==='canceled')))voiceFail();fin()};
-    setTimeout(()=>{try{s.resume();s.speak(u)}catch(e){voiceFail();fin()}},90);
+    const go=()=>{try{s.resume();s.speak(u)}catch(e){voiceFail();fin()}};if(busy&&!IOS)setTimeout(go,90);else go();
     setTimeout(()=>{if(!started){if(voiceOK!==true)voiceFail();setTimeout(fin,600)}},3200);
     setTimeout(fin,est/(u.rate||1)+6000);
   }catch(e){voiceFail();setTimeout(fin,1500)}
@@ -492,7 +492,12 @@ function speak(t,done,lang){
   const nx=()=>{if(tok!==spkTok||i>=parts.length)return end();const p=parts[i++];say1(String(p[0]||''),p[1]||'fr-FR',p[2],nx)};
   nx();
 }
-function voiceFail(){voiceOK=false;if(vbDismissed||document.getElementById('vb'))return;const b=document.createElement('div');b.id='vb';b.className='vbanner';b.innerHTML='<p><b>Pas de voix ici.</b> Ouvre le jeu dans Chrome et monte le volume.</p><button id="vbok">OK</button>';document.body.appendChild(b);document.getElementById('vbok').onclick=()=>{vbDismissed=true;hideVB()}}
+const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let ttsUnlocked=false;
+function unlockTTS(){if(ttsUnlocked||!hasTTS())return;ttsUnlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='fr-FR';speechSynthesis.speak(u);speechSynthesis.resume()}catch(e){}pickVoice()}
+['touchend','pointerup','click'].forEach(ev=>document.addEventListener(ev,unlockTTS,{capture:true,passive:true}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&hasTTS()){try{speechSynthesis.cancel();speechSynthesis.resume()}catch(e){}}});
+function voiceFail(){voiceOK=false;if(vbDismissed||document.getElementById('vb'))return;const b=document.createElement('div');b.id='vb';b.className='vbanner';b.innerHTML=IOS?'<p><b>Pas de son ?</b> Désactive le mode silencieux (bouton sur le côté de l’iPhone), monte le volume, puis touche 🔊.</p><button id="vbok">OK</button>':'<p><b>Pas de voix ici.</b> Ouvre le jeu dans Chrome et monte le volume.</p><button id="vbok">OK</button>';document.body.appendChild(b);document.getElementById('vbok').onclick=()=>{vbDismissed=true;hideVB()}}
 function hideVB(){const b=document.getElementById('vb');if(b)b.remove()}
 
 /* ---------- Collection : 151 animaux réels ---------- */
