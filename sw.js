@@ -1,9 +1,9 @@
-const C="casa-noah-v3",F=["./","index.html","manifest.webmanifest","icon-192.png","icon-512.png"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)));self.skipWaiting()});
+const C="casa-noah-v4",F=["./","index.html","manifest.webmanifest","icon-192.png","icon-512.png"],FONT="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Andika:wght@400;700&display=swap";
+self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F).then(()=>fetch(FONT,{mode:"cors"}).then(r=>c.put(FONT,r)).catch(()=>{}))));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;const u=new URL(e.request.url);
   // page : réseau d'abord pour recevoir les nouvelles versions, cache si hors connexion
-  if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put("index.html",c));return r}).catch(()=>caches.match("index.html")));return}
+  if(e.request.mode==="navigate"){e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put("index.html",c));return r}).catch(()=>caches.match("index.html",{ignoreSearch:true}).then(r=>r||caches.match("./"))));return}
   // polices Google : mises en cache pour le hors connexion
   if(u.hostname.endsWith("fonts.googleapis.com")||u.hostname.endsWith("fonts.gstatic.com")){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(n=>{const c=n.clone();caches.open(C).then(x=>x.put(e.request,c));return n})));return}
   if(u.origin!==location.origin)return;

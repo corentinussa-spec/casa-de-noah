@@ -2146,11 +2146,13 @@ function settings(){
   <span class="lab">Niveaux par univers</span>
   <div class="ulist">${Object.entries(UNIV).map(([k,u])=>`<div class="urow ${u.cls}"><span class="udot">${u.ic}</span><span class="un">${u.t}<small>Niveau ${S.lv[k]} · ${(S.lvp&&S.lvp[k])||0}/${NEED}</small></span><button class="ureset" data-k="${k}">↺ Remettre à zéro</button></div>`).join('')}</div>
   <p>Remettre un univers à zéro le ramène au niveau 1. Les pièces et les cartes du carnet sont gardées. Un niveau monte après 8 bonnes réponses du premier coup et redescend après 3 erreurs de suite. La progression est gardée dans ce navigateur, sur cet appareil.</p>
-  <p id="vdiag"></p><button class="mbtn gold" id="tv">Tester la voix</button><button class="mbtn red" id="rz">Tout effacer (cartes et pièces comprises)</button><button class="mbtn" id="cl">Fermer</button></div>`;
+  <p id="offl">Vérification du mode hors connexion…</p><button class="mbtn" id="inst" hidden>📲 Installer Casa de Noah</button><p id="vdiag"></p><button class="mbtn gold" id="tv">Tester la voix</button><button class="mbtn red" id="rz">Tout effacer (cartes et pièces comprises)</button><button class="mbtn" id="cl">Fermer</button></div>`;
   modal.hidden=false;
   $('#nm').oninput=e=>{S.name=e.target.value.trim()||'Noah';save();updateHead()};
   modal.querySelectorAll('.avas button').forEach(b=>b.onclick=()=>{S.avatar=b.dataset.a;save();updateHead();modal.querySelectorAll('.avas button').forEach(x=>x.classList.toggle('on',x===b))});
   {const vs=hasTTS()?speechSynthesis.getVoices():[];pickVoice();const dg=$('#vdiag');if(dg)dg.textContent=`Voix : ${hasTTS()?'disponible':'non disponible sur cet appareil'} · ${vs.length} voix · français : ${frVoice?frVoice.name:'aucune'} · espagnol : ${esVoice?esVoice.name:'aucune'}`}
+  (async()=>{const o=$('#offl');if(!o)return;try{const k=await caches.keys();let ok=false;for(const n of k){const c=await caches.open(n);if(await c.match('index.html')||await c.match('./')){ok=true;break}}o.textContent=ok?'✓ Le jeu est enregistré sur ce téléphone : il marche sans connexion.':'Le jeu n’est pas encore enregistré pour le hors connexion. Garde la page ouverte quelques secondes avec Internet, puis recharge-la.'}catch(e){o.textContent='Mode hors connexion indisponible dans ce navigateur.'}})();
+  {const ib=$('#inst');if(ib&&window.__inst){ib.hidden=false;ib.onclick=async()=>{const p=window.__inst;window.__inst=null;ib.hidden=true;try{p.prompt();await p.userChoice}catch(e){}}}}
   $('#tv').onclick=()=>{vbDismissed=false;speak(`Bonjour ${S.name} ! Je suis la voix de Casa de Noah.`)};
   $('#cl').onclick=()=>{closeModal();if(!cur)showHome()};
   modal.querySelectorAll('.ureset').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
@@ -2166,6 +2168,8 @@ $('#chest').onclick=showShop;$('#gear').onclick=settings;$('#profile').onclick=s
 updateHead();showHome();
 setTimeout(soundGate,300);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__inst=e});
+window.addEventListener('appinstalled',()=>{window.__inst=null;toast('Casa de Noah est installée !')});
 })();
 </script>
 </body></html>
